@@ -1,0 +1,54 @@
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#define NUM_THREAD 7
+#define NUM_CYCLE 8
+
+sem_t flag;
+char *quote[2];
+
+void *famousWords(void *tid)
+{
+
+    int id = pthread_self();    //assign thread ID to id
+
+    sem_wait(&flag);            //post flag
+    sleep(2 + (id % 2));        //Have threads sleep for 2 or 3 seconds based on odd or even
+
+    FILE *filePtr = fopen("Quote.txt", "a");
+    fprintf(filePtr, "Thread %d: %s\r\n", id, quote[id % 2]);
+    printf("Thread %d is running\n", id);
+    fclose(filePtr);
+    sem_post(&flag);            //release flag
+}
+int main()
+{
+    pthread_t thread[NUM_THREAD];
+    int rc;
+                                //quotes based for odd and even thread ids
+    quote[0] = "\"Controlling complexity is the essence of computer programming.\" --Brian Kernigan";
+    quote[1] = "\"Computer science is no more about computers than astronomy is about telescopes.\" --Edsger Dijkstra";
+                                //Create Quote.txt and enter Process ID
+    FILE *filePtr = fopen("Quote.txt", "w");
+    fprintf(filePtr, "pid: %d\r\n", getpid());
+    fclose(filePtr);
+
+    sem_init(&flag, 0, 1);      //Initialize flag
+
+    for(int j = 0; j < NUM_CYCLE; j++)
+    {
+        for(int i = 0; i < NUM_THREAD; i++)
+        {
+            rc = pthread_create(&thread, NULL, famousWords, (void *) i);
+            if (rc)
+            {
+                printf("ERROR; return code from pthread_create() is %d\n", rc);
+                exit(-1);
+            }
+            pthread_join(i, NULL);
+        }
+    }
+    printf("Sequence completed");
+    sem_destroy(flag);
+    return 0;
+}
